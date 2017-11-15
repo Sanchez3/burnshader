@@ -1,3 +1,4 @@
+*.html linguist-vendored=true
 *.min.css linguist-vendored=false
 *.min.js linguist-vendored=false
 assets/js/main.js linguist-vendored=false
