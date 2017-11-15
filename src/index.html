@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Cache-Control" content="no-transform" />
+    <meta http-equiv="Cache-Control" content="no-siteapp" />
+    <title>
+        burnshader
+    </title>
+    <meta name="keywords" content="">
+    <meta name="x5-fullscreen" content="false" />
+    <meta name="x5-orientation" content="portrait" />
+    <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+</head>
+
+<body>
+    <div class="container" id="container"></div>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/87/three.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.5/dat.gui.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+            #include <packing>
+
+            varying vec2 vUv;
+            varying float z;
+            uniform float cameraNear;
+            uniform float cameraFar;
+
+            void main() {
+                gl_FragColor.rgb = vec3(z/(cameraFar-cameraNear));
+                gl_FragColor.a = 1.0;
+            }
+    </script>
+    <script id="burnVertexShader" type="x-shader/x-vertex">
+            varying vec2 vUv;
+            varying float z;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                z = gl_Position.z;
+            }
+    </script>
+    <script id="burnFragmentShader" type="x-shader/x-fragment">
+            #include <packing>
+
+            varying vec2 vUv;
+            varying float z;
+
+            uniform sampler2D map;
+            uniform sampler2D burnTex;
+            uniform float progress;
+            uniform float burnEffect;
+
+            uniform float isDepth;
+            uniform float cameraNear;
+            uniform float cameraFar;
+            
+            float middleFade = 0.25;
+            void main() {
+                vec4 color = texture2D( map, vUv.xy );
+                vec4 brun = texture2D( burnTex, vUv.xy );
+                float newProgress = progress * (1.0 + middleFade);
+                float unProgress = 1.0 - newProgress;
+                float alpha = brun.r >= unProgress ? 1.0 : 0.0;
+                if (alpha == 0.0) {
+                    float temp = unProgress - middleFade;
+                    /* alpha = brun.r >= temp ? (brun.r - temp) / middleFade  : 0.0;*/
+
+                    if (brun.r >= temp) {
+                        alpha = (brun.r - temp) / middleFade;
+                        if (burnEffect == 1.0) {
+                            color = vec4(1.0, 0.5, 0., color.a)*(1.0-alpha) + color*alpha;
+                            if (alpha < 0.1) {
+                                alpha = 1.0 - abs(alpha - 0.05)*20.0;
+                            }
+                        }
+                    }
+                }
+
+                if (isDepth == 1.0) {
+                    gl_FragColor = vec4(vec3((z-cameraNear)/(cameraFar-cameraNear)), color.a*alpha);
+                } else {
+                    gl_FragColor = vec4(color.xyz, color.a*alpha);
+                }
+            }
+    </script>
+
+</body>
+
+</html>
